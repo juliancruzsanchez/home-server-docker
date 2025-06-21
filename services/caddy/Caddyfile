@@ -1,0 +1,53 @@
+{
+	email me@juliancruzsanchez.com
+}
+
+(authentik) {
+	forward_auth authentik:9000 {
+		copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Email X-Authentik-Name X-Authentik-Uid X-Authentik-Jwt X-Authentik-Meta-Jwks X-Authentik-Meta-Outpost X-Authentik-Meta-Provider X-Authentik-Meta-App X-Authentik-Meta-Version
+		uri /outpost.goauthentik.io/auth/caddy
+	}
+}
+
+auth.{$ROOT_DOMAIN} {
+	reverse_proxy authentik:9000 {
+		header_up Host {http.request.host}
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-For {http.request.remote}
+		header_up X-Forwarded-Host {http.request.host}
+	}
+}
+
+vault.{$ROOT_DOMAIN} {
+	reverse_proxy vaultwarden
+}
+
+photos.{$ROOT_DOMAIN} {
+	reverse_proxy immich:2283
+}
+
+admin.{$ROOT_DOMAIN} {
+	reverse_proxy portainer:9000
+}
+
+drive.{$ROOT_DOMAIN} {
+	reverse_proxy nextcloud
+}
+
+dav.{$ROOT_DOMAIN} {
+	reverse_proxy radicale:5232
+}
+
+torrent.{$ROOT_DOMAIN} {
+	reverse_proxy vuetorrent
+}
+
+git.{$ROOT_DOMAIN} {
+	reverse_proxy gitlab
+}
+
+getinfo.{$ROOT_DOMAIN} {
+	reverse_proxy umami:3000
+	redir /getinfo /getinfo.js
+	file_server
+}

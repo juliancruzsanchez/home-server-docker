@@ -1,0 +1,33 @@
+services:
+  radicale:
+    container_name: radicale
+    image: tomsquest/docker-radicale
+    volumes:
+      - ${DATA_DIR}radicale:/data # Mounts a 'data' directory from your host into the container
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - KILL
+    pids_limit: 50
+    mem_limit: 2G
+    env_file:
+      - path: ../.env
+        required: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:5232 || exit 1"]
+      interval: 30s
+      retries: 3
+      # Note: timeout is not specified in your docker run command,
+      # but can be added here if needed, e.g., timeout: 5s
+      # start_period is also an option for services that take time to start
+    restart: always # Good practice to include a restart policy
+    networks:
+      - caddy_network
+

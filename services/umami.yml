@@ -1,0 +1,41 @@
+services:
+  umami:
+    container_name: umami
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      TRACKER_SCRIPT_NAME: getinfo
+      API_COLLECT_ENDPOINT: all
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASS}@umami-db:5432/umami_db
+      DATABASE_TYPE: postgresql
+      DISABLE_TELEMETRY: 1
+    labels:
+      - traefik.enable=false
+    networks:
+      - umami_network
+      - caddy_network
+    depends_on:
+      - umami-db
+    restart: always
+
+  umami-db:
+    container_name: umami-db
+    image: postgres:15-alpine
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      POSTGRES_DB: umami_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    networks:
+      - umami_network
+    volumes:
+      - ${DATA_DIR}/umami/db:/var/lib/postgresql/data
+    restart: always
+
+networks:
+  umami_network:

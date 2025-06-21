@@ -1,0 +1,16 @@
+services:
+  portainer:
+    image: portainer/portainer-ee:latest
+    container_name: portainer
+    volumes:
+      - ${DATA_DIR}portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    env_file:
+      - path: ../.env
+        required: true
+    networks:
+      - caddy_network
+
+volumes:
+  portainer_data:

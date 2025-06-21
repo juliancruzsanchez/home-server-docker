@@ -1,0 +1,64 @@
+services:
+  nextcloud:
+    image: nextcloud:31.0.6
+    container_name: nextcloud-app
+    restart: always
+    volumes:
+      - ${DATA_DIR}nextcloud/nextcloud:/var/www/html
+      - ${DATA_DIR}nextcloud/apps:/var/www/html/custom_apps
+      - ${DATA_DIR}nextcloud/config:/var/www/html/config
+      - ${DATA_DIR}nextcloud/data:/var/www/html/data
+      - ${DATA_DIR}nextcloud/theme:/var/www/html/themes/mytheme
+    environment:
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_HOST: nextcloud-sql
+      NEXTCLOUD_ADMIN_USER: ${ADMIN_USER}
+      NEXTCLOUD_ADMIN_PASSWORD: ${ADMIN_PASS}
+      NEXTCLOUD_TRUSTED_DOMAINS: drive.${ROOT_DOMAIN}
+      OVERWRITEPROTOCOL: https
+      SMTP_SECURE: tls
+      SMTP_AUTHTYPE: PLAIN
+      SMTP_NAME: ${SMTP_USERNAME}
+    networks:
+      - nextcloud_network
+      - caddy_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/status.php || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      nextcloud-sql:
+        condition: service_healthy
+    env_file:
+      - path: ../.env
+        required: true
+
+  nextcloud-sql:
+    image: mysql:latest
+    container_name: nextcloud-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - ${DATA_DIR}nextcloud/db:/var/lib/mysql # To persist database data
+    networks:
+      - nextcloud_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    env_file:
+      - path: ../.env
+        required: true
+
+networks:
+  nextcloud_network:

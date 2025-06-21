@@ -1,0 +1,20 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: always
+    volumes:
+      - ${DATA_DIR}vaultwarden:/data:rw
+    environment:
+      WEBSOCKET_ENABLED: true
+      SIGNUPS_ALLOWED: false
+      PUSH_ENABLED: true
+      DOMAIN: ${BW_DOMAIN}
+      PUSH_INSTALLATION_ID: ${BW_INSTALLATION_ID}
+      PUSH_INSTALLATION_KEY: ${BW_INSTALLATION_KEY}
+      SMTP_FROM_NAME: Vaultwarden
+    env_file:
+      - path: ../.env
+        required: true
+    networks:
+      - caddy_network

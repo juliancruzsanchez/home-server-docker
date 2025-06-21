@@ -1,0 +1,43 @@
+services:
+  bitwarden:
+    container_name: bitwarden
+    depends_on:
+      - bitwarden-db
+    env_file:
+      - path: ../.env
+        required: true
+    image: ghcr.io/bitwarden/self-host:beta
+    restart: always
+    environment:
+      BW_DOMAIN: vault.jlcpod.com
+      BW_DB_PROVIDER: mysql
+      BW_DB_SERVER: bitwarden-db
+      BW_DB_DATABASE: bitwarden_vault
+      BW_DB_USERNAME: ${DB_USER}
+      BW_DB_PASSWORD: ${DB_PASS}
+    volumes:
+      - ${DATA_DIR}bitwarden/bitwarden:/etc/bitwarden
+    networks:
+      - caddy_network
+      - bitwarden_internal
+
+  bitwarden-db:
+    container_name: bitwarden-db
+    environment:
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASS}
+      MARIADB_DATABASE: "bitwarden_vault"
+      MARIADB_RANDOM_ROOT_PASSWORD: "true"
+    image: mariadb:10
+    restart: always
+    volumes:
+      - ${DATA_DIR}bitwarden/db:/var/lib/mysql
+    networks:
+      - bitwarden_internal
+
+volumes:
+  bitwarden:
+  data:
+
+networks:
+  bitwarden_internal:

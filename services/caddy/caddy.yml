@@ -1,0 +1,27 @@
+services:
+  caddy:
+    container_name: caddy
+    image: caddy:latest
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ${DATA_DIR}caddy/site:/srv
+      - ${DATA_DIR}caddy/data:/data
+      - ${DATA_DIR}caddy/config:/config
+    env_file:
+      - path: ../../default.env
+        required: true
+      - path: ../../.env
+        required: false
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - caddy_network
+
+volumes:
+  caddy_data:
+  caddy_config:

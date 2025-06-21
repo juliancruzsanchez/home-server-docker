@@ -1,0 +1,19 @@
+services:
+  updater:
+    container_name: backup-daemon
+    build:
+      context: ../images/backup
+      dockerfile: ../images/backup/backup.dockerfile
+
+    environment:
+      - REMOTE_USER=user
+      - REMOTE_HOST=backup.${ROOT_DOMAIN}
+      - REMOTE_DEST_DIR=/mnt/16tb/backup
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app
+      - ${DATA_DIR}:/data:ro
+      - ~/.ssh:/root/.ssh:ro
+
+    env_file: .env

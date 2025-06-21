@@ -1,0 +1,31 @@
+name: "Self-Hosted"
+include:
+  - ./services/authentik.yml
+  - ./services/caddy/caddy.yml
+  - ./services/nextcloud.yml
+  - ./services/portainer.yml
+#  - ./services/bitwarden.yml
+  - ./services/vaultwarden.yml
+  - ./services/vuetorrent.yml
+  - ./services/gitlab.yml
+  - ./services/immich.yml
+  - ./services/umami.yml
+#  - ./services/radicale.yml
+
+services:
+  unhealthy_container_restarter:
+    container_name: watcher
+    image: docker:cli
+    network_mode: none
+    cap_drop:
+      - ALL
+    volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
+    command: [ "/bin/sh", "-c", "while true; do sleep 60; docker ps -q -f health=unhealthy | xargs --no-run-if-empty docker restart; done" ]
+    restart: always
+
+networks:
+  caddy_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.11.0.0/16
