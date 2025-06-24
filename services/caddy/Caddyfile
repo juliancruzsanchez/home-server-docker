@@ -34,6 +34,32 @@ drive.{$ROOT_DOMAIN} {
 	reverse_proxy nextcloud
 }
 
+dns.{$ROOT_DOMAIN} {
+  handle /dns-query {
+    reverse_proxy https://adguardhome:443 {
+      trusted_proxies 172.18.0.0/16
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP 1.2.3.4
+      transport http {
+        tls
+        tls_server_name dns.{$ROOT_DOMAIN}
+      }
+    }
+  }
+
+  handle /dns-query/* {
+    reverse_proxy https://adguardhome:443 {
+      trusted_proxies 172.18.0.0/16
+      header_up Host {upstream_hostport}
+      transport http {
+        tls
+        tls_server_name dns.{$ROOT_DOMAIN}
+      }
+    }
+  }
+ reverse_proxy adguardhome	
+}
+
 dav.{$ROOT_DOMAIN} {
 	reverse_proxy radicale:5232
 }
@@ -50,4 +76,8 @@ getinfo.{$ROOT_DOMAIN} {
 	reverse_proxy umami:3000
 	redir /getinfo /getinfo.js
 	file_server
+}
+
+editor.{$ROOT_DOMAIN} {
+	reverse_proxy collabora-code:9980
 }
