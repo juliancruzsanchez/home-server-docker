@@ -9,7 +9,7 @@ services:
     image: ghcr.io/bitwarden/self-host:beta
     restart: always
     environment:
-      BW_DOMAIN: vault.jlcpod.com
+      BW_DOMAIN: vault.${ROOT_DOMAIN}
       BW_DB_PROVIDER: mysql
       BW_DB_SERVER: bitwarden-db
       BW_DB_DATABASE: bitwarden_vault
