@@ -6,16 +6,16 @@ services:
     volumes:
       - ${DATA_DIR}agh/work:/opt/adguardhome/work
       - ${DATA_DIR}agh/conf:/opt/adguardhome/conf
-    # ports:
+    ports:
     #   - "53:53/tcp"
     #   - "53:53/udp"
     #   - "67:67/udp"
     #   - "68:68/udp"
     #   - "${DNS_PORT}:80/tcp"
     #   - "3000:3000/tcp"
-    #   - "853:853/tcp"
+       - "853:853/tcp"
     #   - "784:784/udp"
-    #   - "853:853/udp"
+       - "853:853/udp"
     #   - "8853:8853/udp"
     env_file:
       - path: ../.env

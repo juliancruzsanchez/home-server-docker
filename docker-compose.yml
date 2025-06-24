@@ -10,6 +10,8 @@ include:
   - ./services/gitlab.yml
   - ./services/immich.yml
   - ./services/umami.yml
+  - ./services/adguard.yml
+  - ./services/collabora-code.yml
 #  - ./services/radicale.yml
 
 services:
