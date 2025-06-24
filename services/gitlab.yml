@@ -27,7 +27,7 @@ services:
         gitlab_rails['omniauth_providers'] = [
           {
             name: 'openid_connect',
-            label: 'My Company OIDC Login',
+            label: 'OAuth',
             args: {
               name: 'openid_connect',
               scope: ['openid','profile','email'],
