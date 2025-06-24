@@ -13,10 +13,8 @@ services:
       - ${DATA_DIR}caddy/data:/data
       - ${DATA_DIR}caddy/config:/config
     env_file:
-      - path: ../../default.env
-        required: true
       - path: ../../.env
-        required: false
+        required: true
     extra_hosts:
       - host.docker.internal:host-gateway
     networks:
