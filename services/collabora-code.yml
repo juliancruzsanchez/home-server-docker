@@ -1,8 +1,9 @@
 services:
   collabora-code:
+    name: collabora-code
     image: collabora/code
     volumes:
-      - ./config:/etc/coolwsd
+      - ${DATA_DIR}collabora-code/config:/etc/coolwsd
     restart: always
     networks:
       - caddy_network
