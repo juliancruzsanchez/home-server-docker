@@ -12,13 +12,13 @@ services:
         # --- Base URL ---
         external_url 'https://git.${ROOT_DOMAIN}'
         gitlab_rails['omniauth_enabled'] = true
-        gitlab_rails['omniauth_allow_single_sign_on'] = ['saml']
-        gitlab_rails['omniauth_sync_email_from_provider'] = 'saml'
-        gitlab_rails['omniauth_sync_profile_from_provider'] = ['saml']
+        gitlab_rails['omniauth_allow_single_sign_on'] = ['openid_connect']
+        gitlab_rails['omniauth_sync_email_from_provider'] = 'openid_connect'
+        gitlab_rails['omniauth_sync_profile_from_provider'] = ['openid_connect']
         gitlab_rails['omniauth_sync_profile_attributes'] = ['email']
-        gitlab_rails['omniauth_auto_sign_in_with_provider'] = 'saml'
+        gitlab_rails['omniauth_auto_sign_in_with_provider'] = 'openid_connect'
         gitlab_rails['omniauth_block_auto_created_users'] = false
-        gitlab_rails['omniauth_auto_link_saml_user'] = true
+        gitlab_rails['omniauth_auto_link_user'] = ['openid_connect']
         gitlab_rails['memberlist_advertise_addr'] = '172.11.0.5'
         gitaly['advertise_addr'] = '172.11.0.5:8075'
         prometheus['listen_address'] = '172.11.0.5:9090'
@@ -26,22 +26,26 @@ services:
 
         gitlab_rails['omniauth_providers'] = [
           {
-            name: 'saml',
+            name: 'openid_connect',
+            label: 'My Company OIDC Login',
             args: {
-              assertion_consumer_service_url: 'https://git.${ROOT_DOMAIN}/users/auth/saml/callback',
-              idp_cert_fingerprint: 'B8:BC:98:F6:F8:31:D5:73:B2:FA:25:8E:47:2C:3B:F3:44:DC:CF:6F:77:2D:71:BA:FF:12:B2:BF:6A:D4:A7:E3',
-              idp_sso_target_url: 'https://auth.${ROOT_DOMAIN}/application/saml/gitlab/sso/binding/redirect/',
-              issuer: 'https://git.${ROOT_DOMAIN}',
-              name_identifier_format: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
-              attribute_statements: {
-                email: ['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'],
-                first_name: ['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'],
-                nickname: ['http://schemas.goauthentik.io/2021/02/saml/username']
+              name: 'openid_connect',
+              scope: ['openid','profile','email'],
+              response_type: 'code',
+              issuer: 'https://auth.${ROOT_DOMAIN}/application/o/gitlab/',
+              discovery: true,
+              client_auth_method: 'query',
+              uid_field: 'preferred_username',
+              send_scope_to_token_endpoint: 'true',
+              pkce: true,
+              client_options: {
+                identifier: '${GL_AUTHENTIK_ID}',
+                secret: '${GL_AUTHENTIK_SECRET}',
+                redirect_uri: 'https://git.${ROOT_DOMAIN}/users/auth/openid_connect/callback'
               }
-            },
-            label: 'JLCPod Account'
+            }
           }
-          ]
+        ]
         # --- Caddy Reverse Proxy Settings ---
         # These are critical for making GitLab work behind Caddy
         nginx['enable'] = true
