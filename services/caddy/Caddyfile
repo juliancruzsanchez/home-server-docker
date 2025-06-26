@@ -26,6 +26,10 @@ photos.{$ROOT_DOMAIN} {
 	reverse_proxy immich:2283
 }
 
+ai.photos.{$ROOT_DOMAIN} {
+	reverse_proxy immich-machine-learning:3003
+}
+
 admin.{$ROOT_DOMAIN} {
 	reverse_proxy portainer:9000
 }

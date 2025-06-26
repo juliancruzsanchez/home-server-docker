@@ -12,6 +12,7 @@ name: immich
 services:
   immich:
     container_name: immich
+    restart: always
     image: ghcr.io/immich-app/immich-server:release
     # extends:
     #   file: hwaccel.transcoding.yml
@@ -33,7 +34,6 @@ services:
     depends_on:
       - immich-redis
       - immich-db
-    restart: always
     healthcheck:
       disable: false
     networks:
@@ -59,6 +59,7 @@ services:
       disable: false
     networks:
       - immich_internal
+      - caddy_network
 
   immich-redis:
     container_name: immich-redis
