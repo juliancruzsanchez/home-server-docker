@@ -4,6 +4,8 @@ services:
     container_name: vuetorrent
     restart: always
     environment:
+      WEBUI_USER: ${ADMIN_USER}
+      WEBUI_PASS: ${ADMIN_PASS}
       PUID: 1000
       PGID: 1000
       UMASK_SET: 022
