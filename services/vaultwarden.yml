@@ -9,7 +9,7 @@ services:
       WEBSOCKET_ENABLED: true
       SIGNUPS_ALLOWED: false
       PUSH_ENABLED: true
-      DOMAIN: ${BW_DOMAIN}
+      DOMAIN: https://vault.${ROOT_DOMAIN}
       PUSH_INSTALLATION_ID: ${BW_INSTALLATION_ID}
       PUSH_INSTALLATION_KEY: ${BW_INSTALLATION_KEY}
       SMTP_FROM_NAME: Vaultwarden
