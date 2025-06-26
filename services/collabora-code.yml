@@ -1,7 +1,9 @@
 services:
   collabora-code:
-    name: collabora-code
+    container_name: collabora-code
     image: collabora/code
+    ports:
+      - "9980:9980"
     volumes:
       - ${DATA_DIR}collabora-code/config:/etc/coolwsd
     restart: always
