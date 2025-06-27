@@ -89,7 +89,3 @@ editor.{$ROOT_DOMAIN} {
 ai.{$ROOT_DOMAIN} {
 	reverse_proxy open-webui:8080
 }
-
-admin1.{$ROOT_DOMAIN} {
-	reverse_proxy dozzle:8080
-}
