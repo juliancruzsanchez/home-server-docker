@@ -12,6 +12,8 @@ include:
   - ./services/umami.yml
   - ./services/adguard.yml
   - ./services/collabora-code.yml
+  - ./services/openwebui.yml
+#  - ./services/dozzle.yml
 #  - ./services/radicale.yml
 
 services:

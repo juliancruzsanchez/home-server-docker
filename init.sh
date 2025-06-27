@@ -30,3 +30,4 @@ echo
 read -p "Enter your desired admin username: " ADMIN_USER
 read -p "Enter your desired admin password: " ADMIN_PASS
 echo 
+echo 
