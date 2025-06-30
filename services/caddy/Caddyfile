@@ -90,6 +90,14 @@ ai.{$ROOT_DOMAIN} {
 	reverse_proxy open-webui:8080
 }
 
+#picai.{$ROOT_DOMAIN} {
+#		reverse_proxy stable-diffusion:7860
+#}
+
 admin1.{$ROOT_DOMAIN} {
 	reverse_proxy host.docker.internal:19999
+}
+
+money.{$ROOT_DOMAIN} {
+	reverse_proxy actual-budgeting:5006
 }

@@ -20,6 +20,7 @@ include:
   - ./services/vuetorrent.yml
   - ./services/umami.yml
   - ./services/adguard.yml
+  - ./services/actual-budgeting.yml
 
 # ---- Disabled ----
 #  - ./services/bitwarden.yml
