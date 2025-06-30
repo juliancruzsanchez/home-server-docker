@@ -1,0 +1,7 @@
+services:
+  openai-edge-tts:
+    image: travisvn/openai-edge-tts:latest
+    networks:
+      - ai_network
+    container_name: openai-edge-tts  # Optional:  Give the container a name
+    # Optional configurations (see below)
