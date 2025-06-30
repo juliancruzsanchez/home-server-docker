@@ -16,7 +16,16 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      stable-diffusion:
+        condition: service_healthy
+        restart: true
     # Mount named volumes for persistent data storage
     volumes:
       # Mount the 'ollama' named volume to /root/.ollama inside the container.
@@ -36,6 +45,12 @@ services:
       OPENID_PROVIDER_URL: https://auth.${ROOT_DOMAIN}/application/o/ai/.well-known/openid-configuration
       OPENID_REDIRECT_URI: https://ai.${ROOT_DOMAIN}/oauth/oidc/callback
       OAUTH_PROVIDER_NAME: ${SERVER_NAME_FRIENDLY}
+      ENABLE_IMAGE_PROMPT_GENERATION: True
+      IMAGE_GENERATION_ENGINE: automatic1111
+      ENABLE_IMAGE_GENERATION: True
+      IMAGE_SIZE: 1024x1024
+      AUTOMATIC1111_BASE_URL: http://stable-diffusion:7860
+      IMAGE_GENERATION_MODEL: v1-5-pruned-emaonly.safetensors
     restart: always
     networks:
       - ai_network
