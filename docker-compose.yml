@@ -11,8 +11,9 @@ include:
   - ./services/immich.yml
   - ./services/umami.yml
   - ./services/adguard.yml
-  - ./services/collabora-code.yml
+#  - ./services/collabora-code.yml
   - ./services/openwebui.yml
+  - ./services/stable-diffusion.yml
 #  - ./services/dozzle.yml
 #  - ./services/radicale.yml
 

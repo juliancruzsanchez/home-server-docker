@@ -82,10 +82,14 @@ getinfo.{$ROOT_DOMAIN} {
 	file_server
 }
 
-editor.{$ROOT_DOMAIN} {
-	reverse_proxy collabora-code:9980
-}
+# edit.{$ROOT_DOMAIN} {
+# 	reverse_proxy collabora-code:9980
+# }
 
 ai.{$ROOT_DOMAIN} {
 	reverse_proxy open-webui:8080
+}
+
+admin1.{$ROOT_DOMAIN} {
+	reverse_proxy host.docker.internal:19999
 }

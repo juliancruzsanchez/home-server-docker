@@ -4,10 +4,9 @@ services:
   open-webui:
     # Use the specified Docker image for Open WebUI with Ollama support
     image: ghcr.io/open-webui/open-webui:ollama
-    
     # Assign a specific name to the container
     container_name: open-webui
-      
+
     # Specify runtime options for GPU access.
     # 'all' grants access to all available GPUs.
     deploy:
@@ -17,7 +16,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-              
+
     # Mount named volumes for persistent data storage
     volumes:
       # Mount the 'ollama' named volume to /root/.ollama inside the container.
@@ -26,9 +25,18 @@ services:
       # Mount the 'open-webui' named volume to /app/backend/data inside the container.
       # This is where Open WebUI stores its application data.
       - ${DATA_DIR}open-webui:/app/backend/data
-      
+
     # Set the restart policy to 'always', ensuring the container restarts
     # automatically if it stops or if Docker restarts.
+    env_file:
+#      - ../.env
+      - ../owu.env
+    environment:
+ #     ENABLE_PERSISTENT_CONFIG: false
+      WEBUI_URL: https://ai.${ROOT_DOMAIN}
+      OPENID_PROVIDER_URL: https://auth.${ROOT_DOMAIN}/application/o/ai/.well-known/openid-configuration
+      OPENID_REDIRECT_URI: https://ai.${ROOT_DOMAIN}/oauth/oidc/callback
+      OAUTH_PROVIDER_NAME: ${SERVER_NAME_FRIENDLY}
     restart: always
     networks:
       - caddy_network

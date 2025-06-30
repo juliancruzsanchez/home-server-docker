@@ -1,0 +1,20 @@
+services:
+  stable-diffusion:
+    build:
+      context: ../images/automatic1111
+      dockerfile: automatic1111.dockerfile
+    volumes:
+      - ${DATA_DIR}picai:/app/models
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    container_name: stable-diffusion
+    networks:
+      - caddy_network
