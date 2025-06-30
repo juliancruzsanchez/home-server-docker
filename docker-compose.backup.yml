@@ -1,9 +1,10 @@
 services:
   updater:
     container_name: backup-daemon
+    restart: always
     build:
       context: ../images/backup
-      dockerfile: ../images/backup/backup.dockerfile
+      dockerfile: ./backup.dockerfile
 
     environment:
       - REMOTE_USER=user
