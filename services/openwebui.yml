@@ -30,15 +30,15 @@ services:
     # automatically if it stops or if Docker restarts.
     env_file:
 #      - ../.env
-      - ../owu.env
+      - ../config/owu.env
     environment:
- #     ENABLE_PERSISTENT_CONFIG: false
       WEBUI_URL: https://ai.${ROOT_DOMAIN}
       OPENID_PROVIDER_URL: https://auth.${ROOT_DOMAIN}/application/o/ai/.well-known/openid-configuration
       OPENID_REDIRECT_URI: https://ai.${ROOT_DOMAIN}/oauth/oidc/callback
       OAUTH_PROVIDER_NAME: ${SERVER_NAME_FRIENDLY}
     restart: always
     networks:
+      - ai_network
       - caddy_network
 
 # Define the named volumes used by the services

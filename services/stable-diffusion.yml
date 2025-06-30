@@ -17,4 +17,5 @@ services:
               capabilities: [gpu]
     container_name: stable-diffusion
     networks:
+      - ai_network
       - caddy_network
