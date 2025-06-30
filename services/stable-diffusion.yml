@@ -1,8 +1,8 @@
 services:
   stable-diffusion:
     build:
-      context: ../images/automatic1111
-      dockerfile: automatic1111.dockerfile
+      context: ../images/stable-diffusion
+      dockerfile: stable-diffusion.dockerfile
     volumes:
       - ${DATA_DIR}picai:/app/models
     environment:
