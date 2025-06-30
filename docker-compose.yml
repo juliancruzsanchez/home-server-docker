@@ -1,17 +1,17 @@
 name: "Self-Hosted"
 include:
+  # Core Services
   - ./services/authentik.yml
   - ./services/caddy/caddy.yml
-  - ./services/nextcloud.yml
   - ./services/portainer.yml
-#  - ./services/bitwarden.yml
-  - ./services/vaultwarden.yml
-  - ./services/vuetorrent.yml
+
+  # Storage
+  - ./services/nextcloud.yml
   - ./services/gitlab.yml
+  - ./services/vaultwarden.yml  
   - ./services/immich.yml
-  - ./services/umami.yml
-  - ./services/adguard.yml
-#  - ./services/collabora-code.yml
+
+  # AI
   - ./services/openwebui.yml
   - ./services/stable-diffusion.yml
   - ./services/edge-tts.yml
@@ -25,6 +25,7 @@ include:
 #  - ./services/bitwarden.yml
 #  - ./services/dozzle.yml
 #  - ./services/radicale.yml
+#  - ./services/collabora-code.yml
 
 services:
   unhealthy_container_restarter:
@@ -43,3 +44,4 @@ networks:
       driver: default
       config:
         - subnet: 172.11.0.0/16
+  ai_network:
