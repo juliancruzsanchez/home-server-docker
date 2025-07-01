@@ -30,4 +30,4 @@ EXPOSE 7860
 RUN python3 -m venv venv/
 
 # Command to run the Web UI. You might need to adjust this.
-CMD ["./webui.sh", "-f", "--api", "--listen"]
+CMD ["./webui.sh", "-f", "--api", "--listen", "--xformers"]

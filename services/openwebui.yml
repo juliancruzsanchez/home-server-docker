@@ -50,7 +50,7 @@ services:
       ENABLE_IMAGE_GENERATION: True
       IMAGE_SIZE: 1024x1024
       AUTOMATIC1111_BASE_URL: http://stable-diffusion:7860
-      IMAGE_GENERATION_MODEL: v1-5-pruned-emaonly.safetensors
+      IMAGE_GENERATION_MODEL: sd_xl_base_1.0_0.9vae.safetensors
     restart: always
     networks:
       - ai_network
