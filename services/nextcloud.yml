@@ -23,7 +23,7 @@ services:
       SMTP_NAME: ${SMTP_USERNAME}
     networks:
       - nextcloud_network
-      - caddy_network
+      - proxy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/status.php || exit 1"]
       interval: 15s

@@ -54,7 +54,7 @@ services:
     restart: always
     networks:
       - ai_network
-      - caddy_network
+      - proxy
 
 # Define the named volumes used by the services
 volumes:

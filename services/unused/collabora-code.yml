@@ -8,4 +8,4 @@ services:
       - ${DATA_DIR}collabora-code/config:/etc/coolwsd
     restart: always
     networks:
-      - caddy_network
+      - proxy

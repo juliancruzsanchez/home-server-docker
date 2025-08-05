@@ -64,7 +64,7 @@ services:
         condition: service_healthy
     networks:
       - authentik_internal
-      - caddy_network
+      - proxy
 
   authentik-worker:
     container_name: authentik-worker

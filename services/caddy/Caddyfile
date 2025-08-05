@@ -4,8 +4,11 @@
 
 (authentik) {
 	forward_auth authentik:9000 {
-		copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Email X-Authentik-Name X-Authentik-Uid X-Authentik-Jwt X-Authentik-Meta-Jwks X-Authentik-Meta-Outpost X-Authentik-Meta-Provider X-Authentik-Meta-App X-Authentik-Meta-Version
 		uri /outpost.goauthentik.io/auth/caddy
+		copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Entitlements X-Authentik-Email X-Authentik-Name X-Authentik-Uid X-Authentik-Jwt X-Authentik-Meta-Jwks X-Authentik-Meta-Outpost X-Authentik-Meta-Provider X-Authentik-Meta-App X-Authentik-Meta-Version
+		header_up Host {http.reverse_proxy.upstream.hostport}
+		header_up X-Forwarded-For {http.request.remote}
+		header_up X-Forwarded-Host {http.request.host}
 	}
 }
 
@@ -39,29 +42,29 @@ drive.{$ROOT_DOMAIN} {
 }
 
 dns.{$ROOT_DOMAIN} {
-  handle /dns-query {
-    reverse_proxy https://adguardhome:443 {
-      trusted_proxies 172.18.0.0/16
-      header_up Host {upstream_hostport}
-      header_up X-Real-IP 1.2.3.4
-      transport http {
-        tls
-        tls_server_name dns.{$ROOT_DOMAIN}
-      }
-    }
-  }
+	handle /dns-query {
+		reverse_proxy https://adguardhome:443 {
+			trusted_proxies 172.18.0.0/16
+			header_up Host {upstream_hostport}
+			header_up X-Real-IP 1.2.3.4
+			transport http {
+				tls
+				tls_server_name dns.{$ROOT_DOMAIN}
+			}
+		}
+	}
 
-  handle /dns-query/* {
-    reverse_proxy https://adguardhome:443 {
-      trusted_proxies 172.18.0.0/16
-      header_up Host {upstream_hostport}
-      transport http {
-        tls
-        tls_server_name dns.{$ROOT_DOMAIN}
-      }
-    }
-  }
- reverse_proxy adguardhome	
+	handle /dns-query/* {
+		reverse_proxy https://adguardhome:443 {
+			trusted_proxies 172.18.0.0/16
+			header_up Host {upstream_hostport}
+			transport http {
+				tls
+				tls_server_name dns.{$ROOT_DOMAIN}
+			}
+		}
+	}
+reverse_proxy adguardhome	
 }
 
 dav.{$ROOT_DOMAIN} {
@@ -82,22 +85,59 @@ getinfo.{$ROOT_DOMAIN} {
 	file_server
 }
 
-# edit.{$ROOT_DOMAIN} {
-# 	reverse_proxy collabora-code:9980
-# }
+	edit.{$ROOT_DOMAIN} {
+		reverse_proxy collabora-code:9980
+	}
 
 ai.{$ROOT_DOMAIN} {
 	reverse_proxy open-webui:8080
 }
 
-#picai.{$ROOT_DOMAIN} {
-#		reverse_proxy stable-diffusion:7860
-#}
-
+#	picai.{$ROOT_DOMAIN} {
+#			reverse_proxy stable-diffusion:7860
+#	}
+	
 admin1.{$ROOT_DOMAIN} {
 	reverse_proxy host.docker.internal:19999
 }
 
+lidarr.{$ROOT_DOMAIN} {
+	route {
+		reverse_proxy /outpost.goauthentik.io/* authentik:9000 {
+			header_up Host {http.reverse_proxy.upstream.hostport}
+		}
+
+		import authentik
+		reverse_proxy lidarr:8686
+	}
+}
+
 money.{$ROOT_DOMAIN} {
+	handle /subscriptions* {
+		reverse_proxy wallos
+	}
+	
 	reverse_proxy actual-budgeting:5006
+}
+
+stream.{$ROOT_DOMAIN} {
+	reverse_proxy /outpost.goauthentik.io/* authentik:9000 {
+		header_up Host {http.reverse_proxy.upstream.hostport}
+	}
+
+	handle /sonarr* {
+		import authentik
+		reverse_proxy sonarr:8989
+	}
+
+	handle /radarr* {
+		import authentik 
+		reverse_proxy radarr:7878
+	}
+
+	reverse_proxy jellyfin:8096
+}
+
+smb.{$ROOT_DOMAIN} {
+	reverse_proxy samba:445
 }

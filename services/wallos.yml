@@ -1,0 +1,11 @@
+services:
+  wallos:
+    container_name: wallos
+    restart: always
+    image: bellamy/wallos:latest
+    environment:
+      TZ: 'America/Denver'
+    # Volumes store your data between container upgrades
+    volumes:
+      - '${DATA_DIR}wallos/db:/var/www/html/db'
+      - '${DATA_DIR}wallos/logos:/var/www/html/images/uploads/logos'

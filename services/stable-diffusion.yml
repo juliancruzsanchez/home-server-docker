@@ -1,10 +1,9 @@
 services:
-  stable-diffusion:
-    build:
-      context: ../images/stable-diffusion
-      dockerfile: stable-diffusion.dockerfile
+   stable-diffusion:
+    image: jcsdev/automatic1111
     volumes:
-      - ${DATA_DIR}picai:/app/models
+      - ${DATA_DIR}picai/models:/app/models
+      - ${DATA_DIR}picai/repositories:/app/repositories
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - PYTHONUNBUFFERED=1
@@ -17,11 +16,10 @@ services:
               capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7860"]
-      interval: 10s
+      interval: 5s
       timeout: 10s
-      retries: 10
+      retries: 60
       start_period: 60s
     container_name: stable-diffusion
     networks:
       - ai_network
-      - caddy_network

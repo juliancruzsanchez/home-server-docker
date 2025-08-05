@@ -1,0 +1,19 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    runtime: nvidia # Use the NVIDIA container runtime
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all # Expose all NVIDIA GPUs
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+      - JELLYFIN_PublishedServerUrl=https://stream.${ROOT_DOMAIN}
+    restart: always
+    volumes:
+        - ${DATA_DIR}jellyfin/config:/config
+        - ${DATA_DIR}jellyfin/cache:/cache
+        - ${DATA_DIR}media:/media
+        - ${DATA_DIR}jellyfin/fonts:/usr/local/share/fonts/custom
+    networks:
+        - proxy

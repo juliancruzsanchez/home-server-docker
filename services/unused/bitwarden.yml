@@ -18,7 +18,7 @@ services:
     volumes:
       - ${DATA_DIR}bitwarden/bitwarden:/etc/bitwarden
     networks:
-      - caddy_network
+      - proxy
       - bitwarden_internal
 
   bitwarden-db:

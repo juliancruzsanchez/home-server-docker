@@ -1,0 +1,301 @@
+# dynamic_conf.yml - Traefik Dynamic Configuration
+#
+# HOW TO USE:
+# 1. Place this file in the same directory as your traefik.yml and docker-compose.yml.
+# 2. Ensure the docker-compose.yml mounts this file into the container, like so:
+#    volumes:
+#      - ./dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
+# 3. Make sure the ROOT_DOMAIN environment variable is set before starting Traefik.
+#
+# This file uses the `sfam.io` environment variable, which Traefik will parse at runtime.
+
+http:
+  # ================================================================
+  # Routers - Define how requests are mapped to services.
+  # ================================================================
+  routers:
+    # --- Service Routers ---
+    authentik-router:
+      rule: "Host(`auth.sfam.io`)"
+      service: authentik-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    vault-router:
+      rule: "Host(`vault.sfam.io`)"
+      service: vault-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    photos-router:
+      rule: "Host(`photos.sfam.io`)"
+      service: photos-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    ai-photos-router:
+      rule: "Host(`ai.photos.sfam.io`)"
+      service: ai-photos-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    admin-router:
+      rule: "Host(`admin.sfam.io`)"
+      service: admin-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    drive-router:
+      rule: "Host(`drive.sfam.io`)"
+      service: drive-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    dav-router:
+      rule: "Host(`dav.sfam.io`)"
+      service: dav-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    torrent-router:
+      rule: "Host(`torrent.sfam.io`)"
+      service: torrent-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    git-router:
+      rule: "Host(`git.sfam.io`)"
+      service: git-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+        
+    edit-router:
+      rule: "Host(`edit.sfam.io`)"
+      service: edit-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    ai-router:
+      rule: "Host(`ai.sfam.io`)"
+      service: ai-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    admin1-router:
+      rule: "Host(`admin1.sfam.io`)"
+      service: admin1-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    # --- Complex Routers with Path Handling ---
+    
+    # DNS (AdGuard Home) - has two paths and a default proxy
+    dns-main-router:
+      rule: "Host(`dns.sfam.io`)"
+      service: dns-main-service # This service proxies to HTTP
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 10 # Lower priority
+
+    # GetInfo (Umami) - has a redirect
+    getinfo-router:
+      rule: "Host(`getinfo.sfam.io`)"
+      service: getinfo-service
+      middlewares: ["getinfo-redirect"]
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    # Lidarr (with Authentik)
+    lidarr-router:
+      rule: "Host(`lidarr.sfam.io`)"
+      service: lidarr-service
+      middlewares: ["authentik-mw"] # Applying the authentik forward auth
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+
+    # Money (Actual Budgeting & Wallos) - path-based routing
+    money-subscriptions-router:
+      rule: "Host(`money.sfam.io`) && PathPrefix(`/subscriptions`)"
+      service: wallos-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 15 # Higher priority for the specific path
+    money-main-router:
+      rule: "Host(`money.sfam.io`)"
+      service: actual-budgeting-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 10
+
+    # Stream (Jellyfin, Sonarr, Radarr) - multiple paths with auth
+    stream-sonarr-router:
+      rule: "Host(`stream.sfam.io`) && PathPrefix(`/sonarr`)"
+      service: sonarr-service
+      middlewares: ["authentik-mw"]
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 15
+    stream-radarr-router:
+      rule: "Host(`stream.sfam.io`) && PathPrefix(`/radarr`)"
+      service: radarr-service
+      middlewares: ["authentik-mw"]
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 15
+    stream-lidarr-router:
+      rule: "Host(`stream.sfam.io`) && PathPrefix(`/lidarr`)"
+      service: lidarr-service
+      middlewares: ["authentik-mw"]
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 15
+    stream-main-router: # Jellyfin is the default for the domain
+      rule: "Host(`stream.sfam.io`)"
+      service: jellyfin-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: myresolver
+      priority: 10
+
+  # ================================================================
+  # Services - Define the backend services.
+  # ================================================================
+  services:
+    authentik-service:
+      loadBalancer:
+        servers:
+          - url: "http://authentik:9000"
+    vault-service:
+      loadBalancer:
+        servers:
+          - url: "http://vaultwarden"
+    photos-service:
+      loadBalancer:
+        servers:
+          - url: "http://immich:2283"
+    ai-photos-service:
+      loadBalancer:
+        servers:
+          - url: "http://immich-machine-learning:3003"
+    admin-service:
+      loadBalancer:
+        servers:
+          - url: "http://portainer:9000"
+    drive-service:
+      loadBalancer:
+        servers:
+          - url: "http://nextcloud"
+    dav-service:
+      loadBalancer:
+        servers:
+          - url: "http://radicale:5232"
+    torrent-service:
+      loadBalancer:
+        servers:
+          - url: "http://vuetorrent"
+    git-service:
+      loadBalancer:
+        servers:
+          - url: "http://gitlab"
+    getinfo-service:
+      loadBalancer:
+        servers:
+          - url: "http://umami:3000"
+    edit-service:
+      loadBalancer:
+        servers:
+          - url: "http://collabora-code:9980"
+    ai-service:
+      loadBalancer:
+        servers:
+          - url: "http://open-webui:8080"
+    admin1-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19999" 
+    dns-main-service:
+      loadBalancer:
+        servers:
+          - url: "http://adguardhome"
+    lidarr-service:
+      loadBalancer:
+        servers:
+          - url: "http://lidarr:8686"
+    wallos-service:
+      loadBalancer:
+        servers:
+          - url: "http://wallos"
+    actual-budgeting-service:
+      loadBalancer:
+        servers:
+          - url: "http://actual-budgeting:5006"
+    sonarr-service:
+      loadBalancer:
+        servers:
+          - url: "http://sonarr:8989"
+    radarr-service:
+      loadBalancer:
+        servers:
+          - url: "http://radarr:7878"
+    jellyfin-service:
+      loadBalancer:
+        servers:
+          - url: "http://jellyfin:8096"
+
+  # ================================================================
+  # Middleware - Modify requests before they are sent to services.
+  # ================================================================
+  middlewares:
+    # Authentik Forward Auth Middleware
+    # This replaces the `(authentik)` snippet from your Caddyfile.
+    authentik-mw:
+      forwardAuth:
+        address: "http://authentik:9000/outpost.goauthentik.io/auth/traefik"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "X-Authentik-Username"
+          - "X-Authentik-Groups"
+          - "X-Authentik-Email"
+          - "X-Authentik-Name"
+          - "X-Authentik-Uid"
+          - "X-Authentik-Jwt"
+          - "X-Authentik-Meta-Jwks"
+          - "X-Authentik-Meta-Outpost"
+          - "X-Authentik-Meta-Provider"
+          - "X-Authentik-Meta-App"
+          - "X-Authentik-Meta-Version"
+
+    # GetInfo (Umami) Redirect Middleware
+    # This replaces the `redir /getinfo /getinfo.js` line.
+    getinfo-redirect:
+      redirectRegex:
+        regex: "^https://getinfo.sfam.io/getinfo$"
+        replacement: "https://getinfo.sfam.io/getinfo.js"
+        permanent: true
+        
+    # DNS Custom Headers
+    # Replaces `header_up X-Real-IP 1.2.3.4`
+    dns-headers:
+      headers:
+        customRequestHeaders:
+          X-Real-IP: "1.2.3.4"

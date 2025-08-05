@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  collabora-code:
+    image: collabora/code
+    container_name: collabora-code
+    cap_add:
+      - dSYS_ADMIN
+    networks:
+      - proxy

@@ -10,7 +10,7 @@ services:
       - path: ../.env
         required: true
     networks:
-      - caddy_network
+      - proxy
 
 volumes:
   portainer_data:

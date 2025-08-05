@@ -1,4 +1,13 @@
 services:
+  desec-caddy-sync:
+    container_name: desec-caddy-sync
+    image: jcsdev/desec-caddy-sync:latest
+    restart: no
+    env_file:
+      - path: ../../.env
+        required: true
+    volumes:
+      - ./Caddyfile:/home/node/app/Caddyfile
   caddy:
     container_name: caddy
     image: caddy:latest
@@ -18,7 +27,14 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     networks:
-      - caddy_network
+      - proxy
+
+networks:
+  proxy:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.11.0.0/16
 
 volumes:
   caddy_data:

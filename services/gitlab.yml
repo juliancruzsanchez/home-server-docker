@@ -62,4 +62,4 @@ services:
     env_file:
       - ../.env
     networks:
-      - caddy_network
+      - proxy

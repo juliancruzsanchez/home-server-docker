@@ -37,7 +37,7 @@ services:
     healthcheck:
       disable: false
     networks:
-      - caddy_network
+      - proxy
       - immich_internal
 
   immich-machine-learning:
@@ -59,7 +59,7 @@ services:
       disable: false
     networks:
       - immich_internal
-      - caddy_network
+      - proxy
 
   immich-redis:
     container_name: immich-redis

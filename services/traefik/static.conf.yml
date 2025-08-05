@@ -1,0 +1,52 @@
+# traefik.yml - Traefik Static Configuration
+
+# ----------------------------------------------------------------
+# API & Dashboard
+# ----------------------------------------------------------------
+# Enables the Traefik dashboard for monitoring your services.
+# Access it at http://localhost:8080/dashboard/
+api:
+  dashboard: true
+  insecure: true # Warning: For development/local access only. Secure this in production.
+
+# ----------------------------------------------------------------
+# EntryPoints
+# ----------------------------------------------------------------
+# These are the network entry points into Traefik.
+entryPoints:
+  web:
+    address: ":80"
+    # This section creates a global redirect from HTTP to HTTPS.
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+# ----------------------------------------------------------------
+# Providers
+# ----------------------------------------------------------------
+# Tells Traefik where to find the dynamic configuration for routers and services.
+providers:
+  file:
+    # This path is now the location INSIDE the Docker container.
+    filename: "/etc/traefik/dynamic_conf.yml"
+    # Traefik will automatically watch this file for changes.
+    watch: true
+
+# ----------------------------------------------------------------
+# Certificate Resolvers
+# ----------------------------------------------------------------
+# This section configures automatic HTTPS using Let's Encrypt.
+# This replaces the `email {$EMAIL}` block in your Caddyfile.
+certificatesResolvers:
+  myresolver:
+    acme:
+      # You must replace this with your actual email address.
+      email: "me@juliancruzsanchez.com" 
+      storage: "acme.json" # File where Let's Encrypt certificates will be stored.
+      # This uses the HTTP-01 challenge method to verify domain ownership.
+      httpChallenge:
+        entryPoint: web

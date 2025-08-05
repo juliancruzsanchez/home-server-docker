@@ -3,7 +3,9 @@ services:
     container_name: radicale
     image: tomsquest/docker-radicale
     volumes:
-      - ${DATA_DIR}radicale:/data # Mounts a 'data' directory from your host into the container
+      - ${DATA_DIR}radicale/data:/data
+      - ${DATA_DIR}radicale/config:/config  # Mounts a 'data' directory from your host into the container
+      - ${DATA_DIR}radicale/users:/users
     init: true
     read_only: true
     security_opt:
@@ -15,8 +17,6 @@ services:
       - SETUID
       - SETGID
       - KILL
-    pids_limit: 50
-    mem_limit: 2G
     env_file:
       - path: ../.env
         required: true
@@ -29,5 +29,5 @@ services:
       # start_period is also an option for services that take time to start
     restart: always # Good practice to include a restart policy
     networks:
-      - caddy_network
+      - proxy
 

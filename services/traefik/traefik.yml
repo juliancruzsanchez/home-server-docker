@@ -1,0 +1,21 @@
+services:
+  traefik:
+    image: "traefik:v3.0"
+    container_name: "traefik"
+    restart: always
+    ports:
+      # The HTTP and HTTPS ports
+      - "80:80"
+      - "443:443"
+      # The port for the Traefik dashboard (optional)
+      - "8080:8080"
+    volumes:
+      - ./static.conf.yml:/etc/traefik/traefik.yml:ro
+      - ./routes.yml:/etc/traefik/dynamic_conf.yml:ro
+      - ${DATA_DIR}traefik/acme.json:/acme.json
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy
+
+networks:
+  proxy:

@@ -1,0 +1,42 @@
+services:
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    volumes:
+      - ${DATA_DIR}torrent/sonarr:/config
+      - ${DATA_DIR}media:/media
+      - ${DATA_DIR}torrent/downloads:/downloads  # Replace with your actual download directory
+    environment:
+      - SONARR_USER=${ADMIN_USER}
+      - SONARR_PASSWORD=${ADMIN_PASS}
+    restart: unless-stopped
+    networks:
+      - proxy
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    volumes:
+      - ${DATA_DIR}torrent/radarr:/config
+      - ${DATA_DIR}media:/media
+      - ${DATA_DIR}torrent/downloads:/downloads  # Replace with your actual download directory
+    environment:
+      - RADARR_USER=${ADMIN_USER}
+      - RADARR_PASSWORD=${ADMIN_PASS}
+    restart: unless-stopped
+    networks:
+       - proxy
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ${DATA_DIR}torrent/lidarr:/config
+      - ${DATA_DIR}torrent/downloads:/downloads
+      - ${DATA_DIR}media:/media
+    networks:
+       - proxy
+    restart: unless-stopped

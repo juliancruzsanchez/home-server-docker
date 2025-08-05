@@ -16,7 +16,7 @@ services:
       - traefik.enable=false
     networks:
       - umami_network
-      - caddy_network
+      - proxy
     depends_on:
       - umami-db
     restart: always

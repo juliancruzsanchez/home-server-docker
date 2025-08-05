@@ -1,0 +1,15 @@
+services:
+  samba:
+    image: dockurr/samba
+    container_name: samba
+    environment:
+      NAME: "Games"
+      USER: "batocera"
+      PASS: "StriderCat2024!!"
+    ports:
+      - 445:445
+    volumes:
+      - ${DATA_DIR}samba:/storage
+    restart: always
+    networks:
+      - proxy

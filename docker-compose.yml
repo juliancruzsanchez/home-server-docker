@@ -7,7 +7,7 @@ include:
 
   # Storage
   - ./services/nextcloud.yml
-  - ./services/gitlab.yml
+#  - ./services/gitlab.yml
   - ./services/vaultwarden.yml  
   - ./services/immich.yml
 
@@ -21,11 +21,17 @@ include:
   - ./services/umami.yml
   - ./services/adguard.yml
   - ./services/actual-budgeting.yml
+  - ./services/wallos.yml
+
+  # Media
+  - ./services/jellyfin.yml
+  - ./services/darr.yml
+  - ./services/samba.yml
 
 # ---- Disabled ----
 #  - ./services/bitwarden.yml
 #  - ./services/dozzle.yml
-#  - ./services/radicale.yml
+  - ./services/radicale.yml
 #  - ./services/collabora-code.yml
 
 services:
@@ -40,9 +46,4 @@ services:
     restart: always
 
 networks:
-  caddy_network:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.11.0.0/16
   ai_network:
