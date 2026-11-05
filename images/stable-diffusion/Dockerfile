@@ -23,8 +23,9 @@ RUN pip3 install -r requirements.txt
 # Set environment variables (optional, but recommended)
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV PYTHONUNBUFFERED=1
-ENV SD_USER=user
-ENV SD_PASS=password123
+# NOTE: never bake credentials into an image layer. SD_USER / SD_PASS are
+# injected at runtime by docker compose (see services/stable-diffusion.yml
+# and .env.example), so they are absent from the image history.
 
 # Expose the port the Web UI runs on
 EXPOSE 7860
@@ -32,4 +33,7 @@ EXPOSE 7860
 RUN python3 -m venv venv/
 
 # Command to run the Web UI. You might need to adjust this.
-CMD ["./webui.sh", "-f", "--api", "--listen", "--xformers", "--gradio-auth", "${SD_USER}:${SD_PASS}"]
+# Shell form (not exec form) so that ${SD_USER}:${SD_PASS} is expanded from the
+# runtime environment. Docker does not expand variables in exec-form CMD, so the
+# previous form handed webui.sh the literal string "${SD_USER}:${SD_PASS}".
+CMD ./webui.sh -f --api --listen --xformers --gradio-auth "${SD_USER}:${SD_PASS}"

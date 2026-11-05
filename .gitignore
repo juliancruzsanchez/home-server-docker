@@ -1,1 +1,12 @@
+# Secrets — never commit these
+.env
 *.env
+!.env.example
+
+# Editor / OS noise
+*.swp
+*.swo
+.DS_Store
+
+# Local git worktrees
+.worktrees/
