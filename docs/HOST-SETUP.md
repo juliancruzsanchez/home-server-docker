@@ -404,6 +404,41 @@ Optionally enable the daily docker prune:
 sudo ./scripts/cronSetup.sh
 ```
 
+### 3.10 Deploy the backup daemon (optional)
+
+The backup daemon lives in its own compose file so it does not start with the
+main stack. It needs a **dedicated** SSH key for the backup target — the
+container holds the Docker socket, so treat that key as a
+host-compromising credential.
+
+```bash
+# 1. Create a dedicated key (do NOT reuse your personal key)
+sudo mkdir -p /etc/home-server
+sudo ssh-keygen -t ed25519 -N '' -f /etc/home-server/backup_key \
+  -C 'home-server backup'
+sudo chmod 600 /etc/home-server/backup_key
+
+# 2. Install the public key on the backup target
+ssh-copy-id -i /etc/home-server/backup_key.pub backup@backup.example.com
+
+# 3. Point the stack at it
+cat >> .env <<'EOF'
+BACKUP_SSH_KEY_PATH=/etc/home-server/backup_key
+REMOTE_HOST=backup.example.com
+REMOTE_USER=backup
+REMOTE_DEST_DIR=/mnt/16tb/backup
+EOF
+
+# 4. Build and start it
+docker compose -f docker-compose.backup.yml build
+docker compose -f docker-compose.backup.yml up -d
+docker compose -f docker-compose.backup.yml logs -f backup-daemon
+```
+
+It runs at 04:00 and keeps the main stack up while it works. See
+[Backups](../README.md#backups) for the behaviour and the optional image
+update and alerting settings.
+
 ### 3.9 Verify
 
 ```bash

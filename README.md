@@ -47,7 +47,6 @@ chmod 600 .env
 $EDITOR .env                      # fill in ROOT_DOMAIN, passwords, secrets
 
 ./scripts/generateKeys.sh         # appends AUTHENTIK_SECRET_KEY / UMAMI_APP_SECRET
-mkdir -p config && touch config/owu.env   # required by open-webui (see Known issues)
 
 docker compose config >/dev/null && echo "compose config OK"
 docker compose up -d
@@ -93,11 +92,21 @@ challenge.
 
 Caddy routes are defined in [`services/caddy/Caddyfile`](services/caddy/Caddyfile).
 
+### Optional per-service overrides
+
+`open-webui` also reads `config/owu.env` if you create it. It is **optional** —
+the stack starts without it. Copy the example when you need to override
+something the main `.env` does not cover:
+
+```bash
+cp config/owu.env.example config/owu.env
+```
+
 ### Services that are present but not deployed
 
-`services/gitlab.yml` and `services/collabora-code.yml` are commented out in
-[`docker-compose.yml`](docker-compose.yml). Uncomment them (and create the
-Authentik OAuth provider, see below) to enable CI/CD.
+`services/collabora-code.yml` lives in `services/unused/` and is not included
+by default. Uncomment it in `docker-compose.yml` if you want Collabora Code
+for merge-request review — it is what the `edit.` Caddy route expects.
 
 ---
 
@@ -118,6 +127,20 @@ variable the stack reads.
 `./scripts/generateKeys.sh` appends the random secrets for Authentik and Umami
 to `.env`. It **appends** — running it twice gives you two values for the same
 key, and the last one wins. Run it once, then move the keys into place.
+
+### Variables not in `.env.example`
+
+These were added alongside the runtime fixes and are only needed in specific
+setups. Add them to `.env` if you use the feature.
+
+| Variable | Default | Needed when |
+| --- | --- | --- |
+| `GL_AUTHENTIK_ENABLED` | `false` | You want GitLab SSO through Authentik |
+| `BACKUP_SSH_KEY_PATH` | — | You run the backup daemon |
+| `AUTO_UPDATE` | `false` | You want the backup daemon to pull images |
+| `ALLOW_FLOATING_TAGS` | `false` | You want it to pull `:latest` images |
+| `BACKUP_RETENTION_DAYS` | `14` | You want a different dump retention |
+| `ALERT_WEBHOOK_URL` | — | You want failure alerts |
 
 ### Secrets that were exposed
 
@@ -197,12 +220,14 @@ internal `ai_network`.
 
 ## CI/CD
 
-GitLab is included but disabled by default. To turn it on:
+GitLab runs as part of the stack and is published at `git.<ROOT_DOMAIN>`.
 
-1. Uncomment `./services/gitlab.yml` in `docker-compose.yml`.
-2. Create an OpenID Connect provider in Authentik for the GitLab application.
-3. Put its client id and secret in `GL_AUTHENTIK_ID` / `GL_AUTHENTIK_SECRET`.
-4. Start the stack and complete the initial GitLab root password prompt.
+It ships with the Authentik SSO provider **disabled**, so it boots before the
+OAuth provider exists. To turn SSO on:
+
+1. Create an OpenID Connect provider in Authentik for the GitLab application.
+2. Put its client id and secret in `GL_AUTHENTIK_ID` / `GL_AUTHENTIK_SECRET`.
+3. Set `GL_AUTHENTIK_ENABLED=true` in `.env` and restart GitLab.
 
 **Give it room.** GitLab Omnibus bundles Postgres, Redis, Puma, Sidekiq, Gitaly
 and (in EE) Prometheus, Grafana and Alertmanager. It wants ~8 GB of RAM
@@ -240,28 +265,30 @@ The Arr stack (Sonarr/Radarr/Lidarr), qBittorrent, and Jellyfin share
 directly in the library.
 
 Immich's machine-learning container runs the CUDA backend (via
-`services/hwaccel.ml.yml`) for face detection and object recognition. It is
-configured correctly, but see the known issue about `NVIDIA_DRIVER_CAPABILITIES`
-below — as written, the *whole* GPU path in this stack needs that variable.
+`services/hwaccel.ml.yml`) for face detection and object recognition.
 
 ---
 
 ## Backups
 
 `docker-compose.backup.yml` runs a container that, on a schedule (04:00 by
-default), does:
+default), dumps every database, prunes old dumps, and pushes `${DATA_DIR}` to
+`REMOTE_USER@REMOTE_HOST:${REMOTE_DEST_DIR}` over SSH.
 
-```
-docker compose down  →  git pull  →  rsync --delete  →  docker compose up -d
-```
+It **keeps the stack up** while it works. The earlier version of this script
+ran `docker compose down` → `git pull` → `rsync --delete` → `up -d`, which
+took every service offline for the whole backup window and applied whatever
+happened to be on `main` at 04:00.
 
-It pushes `${DATA_DIR}` to `REMOTE_USER@REMOTE_HOST:${REMOTE_DEST_DIR}` over
-SSH.
+Image updates are **opt-in**. Set `AUTO_UPDATE=true` to let it pull images and
+recreate only the containers that changed — and it refuses to pull images with
+a floating tag unless you also set `ALLOW_FLOATING_TAGS=true`.
 
-**Read [Known issues](#known-issues) before trusting it.** As written this
-script takes the entire stack offline for the duration of the backup, pulls
-unpinned `main` in the middle of the night, and pulls `:latest` images. It is
-sensible in spirit and needs rework in detail.
+Set `BACKUP_SSH_KEY_PATH` in `.env` to the absolute path on the host of a
+**dedicated** deploy key for the backup target. Do not point it at your
+personal key: the backup container also holds the Docker socket.
+
+Set `ALERT_WEBHOOK_URL` to get a webhook call when a backup fails.
 
 ---
 
@@ -272,72 +299,71 @@ sensible in spirit and needs rework in detail.
 - **Do not port-forward the whole stack.** Use Tailscale or WireGuard for
   remote access instead of exposing Caddy to the open internet. If you do
   expose Caddy, put Authentik in front (which the config already does).
-- **The Immich ML API is published** at `ai.photos.<ROOT_DOMAIN>`. It is an
-  internal service and does not need to be reachable from outside.
 - **Portainer and the Docker socket.** Portainer mounts
   `/var/run/docker.sock`, which is root-equivalent access to the host.
   Protect it with a strong password and keep it behind Authentik.
 - **`collabora-code` runs with `cap_add: dSYS_ADMIN`.** That is a
   broad capability; scope the service if you enable it.
-- **The backup container mounts the host's `~/.ssh`.** Use a dedicated
-  read-only deploy key rather than your personal key.
+- **The backup container holds the Docker socket**, so treat its deploy key as
+  a host-compromising credential. Use a dedicated key with a narrow scope.
 
 ---
 
 ## Known issues
 
-Found while auditing this repository. None of them are fixed yet — they are
-listed here so you do not lose an afternoon to them.
+Found while auditing this repository. Items under **Fixed** were addressed by
+the open pull requests; the rest are still outstanding.
 
-**Blockers**
+### Fixed
 
-1. **`open-webui` will not start as-is.** `services/openwebui.yml` declares
-   `env_file: ../config/owu.env`, but no `config/` directory exists in the
-   repository. Either create it (`mkdir -p config && touch config/owu.env`) or
-   switch the line to `../.env`.
-2. **NVENC does not work.** `services/jellyfin.yml` sets `runtime: nvidia` and
-   `NVIDIA_VISIBLE_DEVICES=all`, but not
-   `NVIDIA_DRIVER_CAPABILITIES=compute,utility,video`. The toolkit's default
-   is `utility,compute` — without `video` there is no encoder, and Jellyfin
-   silently falls back to CPU transcoding.
+- **`open-webui` would not start.** `services/openwebui.yml` pointed `env_file`
+  at `../config/owu.env`, a file the repository never shipped. The main `.env`
+  is now required and `config/owu.env` is optional. *#3*
+- **NVENC never engaged.** `services/jellyfin.yml` did not set
+  `NVIDIA_DRIVER_CAPABILITIES`, and the toolkit defaults to `utility,compute`,
+  so Jellyfin silently transcoded on the CPU. *#3*
+- **`gitlab.yml` was unpinned, on EE, and carried the whole monitoring stack.**
+  Now `gitlab/gitlab-ce:19.5.3-ce.0` with Prometheus, Grafana, Alertmanager
+  and the exporters off. *#3*
+- **`gitlab.yml` advertised `172.11.0.5`** for memberlist and Prometheus but
+  never assigned that address, so GitLab advertised an IP it did not own. *#3*
+- **The nightly backup daemon took the whole stack down**, pulled unpinned
+  `main` and `:latest` images, and could not even build — `apk add
+  docker-compose` does not exist in Alpine 3.22+. Rebuilt to keep the stack
+  up, dump databases properly, and make image updates opt-in and tag-safe. *#3*
+- **Three unsafe Caddy routes.** `admin1.` was a leftover debug route,
+  `smb.` could never work (Caddy does not speak SMB), and `ai.photos.`
+  published the unauthenticated Immich ML API to the internet. All three are
+  now commented out with an explanation. *#3*
+- **Two credentials were committed in plaintext** — the Samba password and the
+  Automatic1111 Gradio password. Both now come from `.env`. *#1* — but the old
+  values are still in the git history and **must be rotated**.
 
-**Configuration**
+### Still open
 
-3. **`gitlab.yml` uses `gitlab/gitlab-ee:latest`** — unpinned, and it drags in
-   the whole Prometheus/Grafana stack. See [CI/CD](#cicd).
-4. **`desec-caddy-sync` exits at startup by design.** It syncs Caddy's DNS
+1. **`desec-caddy-sync` exits at startup by design.** It syncs Caddy's DNS
    records to deSEC.io and has `restart: no`, so it fails once and stays down
    unless deSEC credentials are present. If you are not hosting DNS at
    deSEC.io that is expected; if you are, add its API token to `.env` (the
    deSEC tooling reads `DESEC_TOKEN`).
-5. **`scripts/prune.sh` stops every container** — including itself — via
+2. **`scripts/prune.sh` stops every container** — including itself — via
    `docker stop $(docker ps -q)`.
-6. **`scripts/restart.sh` runs compose under `sudo`**, which leaves root-owned
+3. **`scripts/restart.sh` runs compose under `sudo`**, which leaves root-owned
    files in the repository.
-7. **`generateKeys.sh` appends rather than replacing.** Running it twice
+4. **`generateKeys.sh` appends rather than replacing.** Running it twice
    duplicates keys.
-8. **`images/stable-diffusion/` is never built.** The compose service uses the
+5. **`images/stable-diffusion/` is never built.** The compose service uses the
    published `jcsdev/automatic1111` image and has no `build:` key, so that
    Dockerfile is dead code.
+6. **`services/.stable-diffusion.yml.swp`** (a nano swap file) was committed;
+   it has been removed in the security fix branch.
 
-**Routing**
+### Worth knowing, not broken
 
-9. **`admin1.<ROOT_DOMAIN>` is a leftover debug route** pointing at
-   `host.docker.internal:19999`. Remove it or point it at something real.
-10. **`smb.<ROOT_DOMAIN>` cannot work.** Caddy cannot reverse-proxy SMB; that
-    route needs to go. Reach Samba over `smb://` directly.
-11. **The `edit.` Caddy block is tab-indented** and points at `collabora-code`,
-    which is disabled by default.
-
-**Operations**
-
-12. **The nightly backup daemon takes the whole stack down**, pulls unpinned
-    `main`, pulls `:latest` images, and has no alerting if `up -d` fails.
-13. **`gitlab.yml` advertises `172.11.0.5`** for memberlist and Prometheus but
-    never assigns that static IP, so GitLab's clustering will advertise an
-    address it does not hold.
-14. **`services/.stable-diffusion.yml.swp`** (a nano swap file) was committed;
-    it has been removed in the security fix branch.
+- The `edit.` Caddy route points at `collabora-code`, which is disabled by
+  default, so that route returns a 502 until you enable the service.
+- `header_up X-Real-IP 1.2.3.4` in the `dns.` block is a leftover placeholder.
+  Every DNS client is reported with that address.
 
 ---
 
@@ -347,6 +373,8 @@ listed here so you do not lose an afternoon to them.
 docker-compose.yml            root stack, pulls in services/*.yml via `include:`
 docker-compose.backup.yml     the backup daemon
 .env.example                  annotated environment template
+config/
+  owu.env.example             optional per-service overrides for open-webui
 services/
   caddy/Caddyfile             routing, TLS, Authentik forward-auth
   caddy/caddy.yml             Caddy + desec-caddy-sync
