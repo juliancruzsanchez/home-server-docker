@@ -29,9 +29,12 @@ photos.{$ROOT_DOMAIN} {
 	reverse_proxy immich:2283
 }
 
-ai.photos.{$ROOT_DOMAIN} {
-	reverse_proxy immich-machine-learning:3003
-}
+# The Immich machine-learning API is an internal service. Publishing it put an
+# unauthenticated endpoint that accepts image jobs on the open internet. The
+# immich container reaches it over the internal immich_internal network.
+# ai.photos.{$ROOT_DOMAIN} {
+# 	reverse_proxy immich-machine-learning:3003
+# }
 
 admin.{$ROOT_DOMAIN} {
 	reverse_proxy portainer:9000
@@ -85,9 +88,11 @@ getinfo.{$ROOT_DOMAIN} {
 	file_server
 }
 
-	edit.{$ROOT_DOMAIN} {
-		reverse_proxy collabora-code:9980
-	}
+# Requires the collabora-code service, which is disabled by default.
+# See services/unused/collabora-code.yml.
+edit.{$ROOT_DOMAIN} {
+	reverse_proxy collabora-code:9980
+}
 
 ai.{$ROOT_DOMAIN} {
 	reverse_proxy open-webui:8080
@@ -97,9 +102,11 @@ ai.{$ROOT_DOMAIN} {
 #			reverse_proxy stable-diffusion:7860
 #	}
 	
-admin1.{$ROOT_DOMAIN} {
-	reverse_proxy host.docker.internal:19999
-}
+# Leftover debug route pointing at an unidentified port on the host. Removed
+# because it published that service to the internet.
+# admin1.{$ROOT_DOMAIN} {
+# 	reverse_proxy host.docker.internal:19999
+# }
 
 lidarr.{$ROOT_DOMAIN} {
 	route {
@@ -138,6 +145,8 @@ stream.{$ROOT_DOMAIN} {
 	reverse_proxy jellyfin:8096
 }
 
-smb.{$ROOT_DOMAIN} {
-	reverse_proxy samba:445
-}
+# Caddy cannot reverse-proxy SMB - it only speaks HTTP. Reach the share
+# directly over smb:// instead.
+# smb.{$ROOT_DOMAIN} {
+# 	reverse_proxy samba:445
+# }

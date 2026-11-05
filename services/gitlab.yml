@@ -1,33 +1,43 @@
 services:
   gitlab:
-    # PORTS 80 and 22
-    image: gitlab/gitlab-ee:latest # Using latest is fine, or pin to your version
+    # Pinned on purpose. `latest` means an unattended major upgrade lands the
+    # next time the image is pulled, with no changelog and no way back.
+    # 19.5.3-ce.0 is exactly what `latest` currently resolves to.
+    image: gitlab/gitlab-ce:19.5.3-ce.0
     container_name: gitlab
     restart: unless-stopped
     hostname: "git.${ROOT_DOMAIN}"
+
+    # Omnibus is heavy. These caps stop it starving Jellyfin and the AI
+    # endpoint on a shared box.
+    mem_limit: 8g
+    mem_reservation: 4g
+
     environment:
       GITLAB_ROOT_PASSWORD: ${DB_PASS}
       EXTERNAL_URL: https://git.${ROOT_DOMAIN}
       GITLAB_OMNIBUS_CONFIG: |
         # --- Base URL ---
         external_url 'https://git.${ROOT_DOMAIN}'
+
+        # --- Authentication ---
+        # The Authentik SSO provider is DISABLED by default so that GitLab
+        # boots even when GL_AUTHENTIK_ID / GL_AUTHENTIK_SECRET are empty.
+        # Create the OpenID Connect provider in Authentik, set the two
+        # variables in .env, then set GL_AUTHENTIK_ENABLED=true.
         gitlab_rails['omniauth_enabled'] = true
         gitlab_rails['omniauth_allow_single_sign_on'] = ['openid_connect']
         gitlab_rails['omniauth_sync_email_from_provider'] = 'openid_connect'
-        gitlab_rails['omniauth_sync_profile_from_provider'] = ['openid_connect']
+        gitlab_rails['omniauth_sync_profile_from_provider'] = 'openid_connect'
         gitlab_rails['omniauth_sync_profile_attributes'] = ['email']
         gitlab_rails['omniauth_auto_sign_in_with_provider'] = 'openid_connect'
         gitlab_rails['omniauth_block_auto_created_users'] = false
         gitlab_rails['omniauth_auto_link_user'] = ['openid_connect']
-        gitlab_rails['memberlist_advertise_addr'] = '172.11.0.5'
-        gitaly['advertise_addr'] = '172.11.0.5:8075'
-        prometheus['listen_address'] = '172.11.0.5:9090'
-        gitlab_pages['listen_proxy'] = '172.11.0.5:8090'
-
         gitlab_rails['omniauth_providers'] = [
           {
             name: 'openid_connect',
             label: 'OAuth',
+            enabled: ${GL_AUTHENTIK_ENABLED:-false},
             args: {
               name: 'openid_connect',
               scope: ['openid','profile','email'],
@@ -46,6 +56,21 @@ services:
             }
           }
         ]
+
+        # --- Resource tuning ---
+        # Omnibus ships Prometheus, Grafana, Alertmanager and the node and
+        # redis exporters by default. That is roughly 1.5 GB of RAM for
+        # telemetry this stack does not consume. Turn it off and spend the
+        # memory on GitLab itself.
+        prometheus_monitoring['enable'] = false
+        alertmanager['enable'] = false
+        grafana['enable'] = false
+        node_exporter['enable'] = false
+        redis_exporter['enable'] = false
+        puma['worker_processes'] = 2
+        sidekiq['max_concurrency'] = 10
+        postgresql['shared_buffers'] = "256MB"
+
         # --- Caddy Reverse Proxy Settings ---
         # These are critical for making GitLab work behind Caddy
         nginx['enable'] = true
@@ -53,13 +78,19 @@ services:
         nginx['listen_https'] = false # Caddy handles HTTPS
         letsencrypt['enable'] = false # Caddy handles SSL certificates
         gitlab_rails['trusted_proxies'] = ['172.11.0.0/16']
+
+        # NOTE: the memberlist / gitaly / prometheus / gitlab_pages addresses
+        # used to be pinned to 172.11.0.5 here. This service is never given
+        # that static address, so the overrides pointed GitLab at an IP it
+        # did not own. Omnibus now detects the container address itself.
+
     volumes:
       - "${DATA_DIR}/gitlab/config:/etc/gitlab"
       - "${DATA_DIR}/gitlab/logs:/var/log/gitlab"
       - "${DATA_DIR}/gitlab/data:/var/opt/gitlab"
     shm_size: "256m"
-    # The 'env_file' paths are relative to the docker-compose.yml file itself
     env_file:
-      - ../.env
+      - path: ../.env
+        required: true
     networks:
       - proxy

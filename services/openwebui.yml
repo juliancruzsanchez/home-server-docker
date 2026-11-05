@@ -38,8 +38,14 @@ services:
     # Set the restart policy to 'always', ensuring the container restarts
     # automatically if it stops or if Docker restarts.
     env_file:
-#      - ../.env
-      - ../config/owu.env
+      # The main environment file is required.
+      - path: ../.env
+        required: true
+      # Optional OpenWebUI overrides. Copy config/owu.env.example to
+      # config/owu.env if you need to set anything the main file does not
+      # cover. The file is optional, so the stack starts without it.
+      - path: ../config/owu.env
+        required: false
     environment:
       WEBUI_URL: https://ai.${ROOT_DOMAIN}
       OPENID_PROVIDER_URL: https://auth.${ROOT_DOMAIN}/application/o/ai/.well-known/openid-configuration

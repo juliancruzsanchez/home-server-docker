@@ -7,7 +7,7 @@ include:
 
   # Storage
   - ./services/nextcloud.yml
-#  - ./services/gitlab.yml
+  - ./services/gitlab.yml
   - ./services/vaultwarden.yml  
   - ./services/immich.yml
 
