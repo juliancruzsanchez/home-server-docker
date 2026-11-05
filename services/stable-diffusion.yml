@@ -7,6 +7,10 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - PYTHONUNBUFFERED=1
+      # Gradio UI credentials, injected at runtime so they never end up baked
+      # into an image layer. See .env.example.
+      - SD_USER=${SD_USER:?SD_USER must be set in .env}
+      - SD_PASS=${SD_PASS:?SD_PASS must be set in .env}
     deploy:
       resources:
         reservations:

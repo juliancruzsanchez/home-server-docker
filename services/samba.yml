@@ -3,11 +3,13 @@ services:
     image: dockurr/samba
     container_name: samba
     environment:
-      NAME: "Games"
-      USER: "batocera"
-      PASS: "StriderCat2024!!"
+      # Credentials are injected from .env at runtime (see .env.example).
+      # Never hardcode them in this file: this repository is public.
+      NAME: ${SAMBA_SHARE_NAME:-Games}
+      USER: ${SAMBA_USER:?SAMBA_USER must be set in .env}
+      PASS: ${SAMBA_PASS:?SAMBA_PASS must be set in .env}
     ports:
-      - 445:445
+      - "445:445"
     volumes:
       - ${DATA_DIR}samba:/storage
     restart: always
