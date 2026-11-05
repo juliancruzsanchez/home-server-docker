@@ -1,1 +1,402 @@
 # home-server-docker
+
+A self-hosted Docker Compose suite for one home server, covering three jobs that
+normally want three different machines:
+
+| Job | What runs it |
+| --- | --- |
+| **Web development CI/CD** | GitLab (forge + CI + registry), Collabora Code for merge-request review |
+| **Home media server** | Jellyfin, Sonarr/Radarr/Lidarr, qBittorrent, Nextcloud, Immich, Samba, Radicale |
+| **Local AI endpoint** | OpenWebUI + Ollama (OpenAI-compatible API), Automatic1111 for image generation, Immich ML |
+
+Everything runs behind a single Caddy reverse proxy with automatic TLS and
+Authentik SSO in front of it. One NVIDIA GPU serves all three: inference and
+image generation compute, plus NVENC hardware transcoding for Jellyfin.
+
+> **New here?** Read **[`docs/HOST-SETUP.md`](docs/HOST-SETUP.md)** first — it
+> walks through preparing the host machine (disk, software RAID, Docker, NVIDIA
+> drivers) and has notes for other operating systems.
+
+---
+
+## Reference hardware
+
+The setup below is written against, and was validated on:
+
+| Component | Spec | Notes |
+| --- | --- | --- |
+| OS | Ubuntu Server 26.04 LTS (`resolute`) | NVIDIA's most-tested host for a reason — see `docs/HOST-SETUP.md` |
+| GPU | NVIDIA RTX 4070 Super | Ada Lovelace, **12 GB VRAM**, NVENC 8th gen with AV1 encode, ~220 W |
+| System disk | 1 TB SSD | OS, Docker layers, databases, Git repositories |
+| Data disks | 2 × 16 TB HDD, software RAID1 (`mdadm`) | Media, models, backups |
+
+The compose files themselves are not hardware-specific. The 12 GB VRAM figure
+does matter though — it sets your model ceiling — so read
+[The AI endpoint](#the-ai-endpoint) before picking models.
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/juliancruzsanchez/home-server-docker.git
+cd home-server-docker
+
+cp .env.example .env
+chmod 600 .env
+$EDITOR .env                      # fill in ROOT_DOMAIN, passwords, secrets
+
+./scripts/generateKeys.sh         # appends AUTHENTIK_SECRET_KEY / UMAMI_APP_SECRET
+
+docker compose config >/dev/null && echo "compose config OK"
+docker compose up -d
+docker compose ps
+```
+
+The host needs Docker Engine, the Compose v2 plugin, and the NVIDIA Container
+Toolkit. All three are set up in [`docs/HOST-SETUP.md`](docs/HOST-SETUP.md).
+
+### Required DNS
+
+Every service is published as a subdomain of `ROOT_DOMAIN`, so that domain
+needs an A/AAAA record pointing at the server (a split-horizon DNS entry on your
+LAN is fine). Caddy obtains certificates over HTTP-01, which means port 80
+must be reachable from the internet for the initial issuance — or use a DNS
+challenge.
+
+---
+
+## Services
+
+| Subdomain | Container | Purpose |
+| --- | --- | --- |
+| `auth.` | `authentik` | Single sign-on for everything else |
+| `vault.` | `vaultwarden` | Password manager |
+| `photos.` | `immich` | Photo library + mobile backup |
+| `drive.` | `nextcloud` | Files, calendars, contacts |
+| `dav.` | `radicale` | Lightweight CalDAV/CardDAV |
+| `stream.` | `jellyfin` | Media streaming |
+| `stream.` (`/sonarr`, `/radarr`) | `sonarr`, `radarr` | TV and movie automation |
+| `lidarr.` | `lidarr` | Music automation |
+| `torrent.` | `vuetorrent` | qBittorrent web UI |
+| `ai.` | `open-webui` | Chat UI for the local models |
+| `git.` | `gitlab` | Git forge + CI/CD (disabled by default) |
+| `money.` | `wallos`, `actual-budgeting` | Subscriptions and budgeting |
+| `getinfo.` | `umami` | Privacy-friendly analytics |
+| `dns.` | `adguardhome` | DNS filtering + admin UI |
+| `admin.` | `portainer` | Container management UI |
+| — | `samba` | SMB share (LAN only, port 445) |
+| — | `openai-edge-tts` | TTS backend for OpenWebUI |
+| — | `stable-diffusion` | Automatic1111, internal to the AI network only |
+| — | `immich-machine-learning` | Face/object recognition for Immich (GPU) |
+
+Caddy routes are defined in [`services/caddy/Caddyfile`](services/caddy/Caddyfile).
+
+### Optional per-service overrides
+
+`open-webui` also reads `config/owu.env` if you create it. It is **optional** —
+the stack starts without it. Copy the example when you need to override
+something the main `.env` does not cover:
+
+```bash
+cp config/owu.env.example config/owu.env
+```
+
+### Services that are present but not deployed
+
+`services/collabora-code.yml` lives in `services/unused/` and is not included
+by default. Uncomment it in `docker-compose.yml` if you want Collabora Code
+for merge-request review — it is what the `edit.` Caddy route expects.
+
+---
+
+## Configuration
+
+All configuration lives in a single `.env` file at the repository root.
+[`.env.example`](.env.example) is the annotated template and documents every
+variable the stack reads.
+
+**Two conventions matter:**
+
+1. **`DATA_DIR` must end with a trailing slash.** The service files mix
+   `${DATA_DIR}name` and `${DATA_DIR}/name` styles; a trailing slash makes both
+   resolve to the same path. Without it you get paths like `/mnt/fast/datanextcloud`.
+2. **`.env` is git-ignored.** Never commit it, never paste it into an issue.
+   Set its mode to `600`.
+
+`./scripts/generateKeys.sh` appends the random secrets for Authentik and Umami
+to `.env`. It **appends** — running it twice gives you two values for the same
+key, and the last one wins. Run it once, then move the keys into place.
+
+### Variables not in `.env.example`
+
+These were added alongside the runtime fixes and are only needed in specific
+setups. Add them to `.env` if you use the feature.
+
+| Variable | Default | Needed when |
+| --- | --- | --- |
+| `GL_AUTHENTIK_ENABLED` | `false` | You want GitLab SSO through Authentik |
+| `BACKUP_SSH_KEY_PATH` | — | You run the backup daemon |
+| `AUTO_UPDATE` | `false` | You want the backup daemon to pull images |
+| `ALLOW_FLOATING_TAGS` | `false` | You want it to pull `:latest` images |
+| `BACKUP_RETENTION_DAYS` | `14` | You want a different dump retention |
+| `ALERT_WEBHOOK_URL` | — | You want failure alerts |
+
+### Secrets that were exposed
+
+Two credentials were committed to this repository in plaintext before it went
+public, and **remain readable in the git history** regardless of the current
+state of the tree:
+
+- the Samba share password (`services/samba.yml`)
+- the Automatic1111 Gradio password (`images/stable-diffusion/Dockerfile`)
+
+Both now come from `.env`. **Both must still be rotated** — treat the old
+values as compromised and pick new, unrelated ones.
+
+---
+
+## Storage layout
+
+`DATA_DIR` points at the fast disk. Bulk data lives on the RAID1 pool and is
+bind-mounted into place, so no compose file needs to change:
+
+```
+/mnt/fast/data/          <- DATA_DIR (SSD)   app state: databases, config, Git repos
+/mnt/raid/media/         <- RAID1            media library
+/mnt/raid/ollama/        <- RAID1            model weights
+/mnt/raid/picai/         <- RAID1            Stable Diffusion models
+```
+
+To bind-mount the RAID into the app-data tree so `${DATA_DIR}media` resolves to
+the RAID automatically:
+
+```bash
+# /etc/fstab
+/mnt/raid/media  /mnt/fast/data/media  none  bind  0 0
+```
+
+**RAID1 is not a backup.** A mirror protects you from a single disk failure,
+not from deletion, corruption, or ransomware. Keep the off-site copy that the
+backup daemon pushes to `REMOTE_HOST`.
+
+---
+
+## The AI endpoint
+
+OpenWebUI is the front door; Ollama serves the models behind it.
+
+```bash
+# OpenAI-compatible API (OpenWebUI's bundled Ollama)
+curl http://localhost:11434/api/tags
+
+# Chat UI
+open https://ai.$ROOT_DOMAIN
+```
+
+**12 GB VRAM is the real constraint.** Practical model ceilings on an RTX 4070 Super:
+
+| Model size | Fits? | Notes |
+| --- | --- | --- |
+| 7–8B (Q4) | ✅ Comfortable | Fastest, most concurrent users |
+| 14B (Q4) | ✅ Comfortable | The sweet spot for code and reasoning |
+| 20B (MXFP4/Q4) | ⚠️ Tight | `gpt-oss:20b` runs with reduced context |
+| 30B+ | ❌ | Does not fit in 12 GB |
+
+For a production-grade OpenAI-compatible API with proper batching, swap the
+bundled Ollama for **vLLM** serving an AWQ-quantised model, and point
+OpenWebUI at it instead.
+
+**The GPU is shared three ways.** Ollama inference, Automatic1111 image
+generation, and Jellyfin NVENC transcoding all pull from the same card. They
+will not saturate it simultaneously in normal use, but a heavy SD render will
+make the chat endpoint feel slow.
+
+The Automatic1111 UI is deliberately **not** exposed through Caddy (the
+`picai` route is commented out). It is reachable only from OpenWebUI over the
+internal `ai_network`.
+
+---
+
+## CI/CD
+
+GitLab runs as part of the stack and is published at `git.<ROOT_DOMAIN>`.
+
+It ships with the Authentik SSO provider **disabled**, so it boots before the
+OAuth provider exists. To turn SSO on:
+
+1. Create an OpenID Connect provider in Authentik for the GitLab application.
+2. Put its client id and secret in `GL_AUTHENTIK_ID` / `GL_AUTHENTIK_SECRET`.
+3. Set `GL_AUTHENTIK_ENABLED=true` in `.env` and restart GitLab.
+
+**Give it room.** GitLab Omnibus bundles Postgres, Redis, Puma, Sidekiq, Gitaly
+and (in EE) Prometheus, Grafana and Alertmanager. It wants ~8 GB of RAM
+minimum. On a shared box, disable the monitoring stack in
+`GITLAB_OMNIBUS_CONFIG` — it is worth about 1.5 GB:
+
+```yaml
+prometheus_monitoring['enable'] = false
+alertmanager['enable'] = false
+grafana['enable'] = false
+node_exporter['enable'] = false
+redis_exporter['enable'] = false
+```
+
+Also pin the image tag. `gitlab/gitlab-ee:latest` means an unattended major
+upgrade lands whenever the image is pulled.
+
+**Isolate your runner.** A GitLab runner using the Docker executor needs the
+Docker socket, which means a build job can reach the whole host — including
+your photo library and SMB share. Do not run `privileged: true`, scope the
+runner to one project, and set `concurrency: 1`. The safe version runs the
+runner inside a VM or LXC.
+
+---
+
+## Media server
+
+Jellyfin transcodes with NVENC on the same NVIDIA card. **Consumer NVIDIA
+cards cap concurrent NVENC sessions at 5** — that is a driver limitation, not a
+Jellyfin setting. It is fine for a household and worth knowing about if you
+add viewers.
+
+The Arr stack (Sonarr/Radarr/Lidarr), qBittorrent, and Jellyfin share
+`${DATA_DIR}media` and `${DATA_DIR}torrent/downloads`, so downloads land
+directly in the library.
+
+Immich's machine-learning container runs the CUDA backend (via
+`services/hwaccel.ml.yml`) for face detection and object recognition.
+
+---
+
+## Backups
+
+`docker-compose.backup.yml` runs a container that, on a schedule (04:00 by
+default), dumps every database, prunes old dumps, and pushes `${DATA_DIR}` to
+`REMOTE_USER@REMOTE_HOST:${REMOTE_DEST_DIR}` over SSH.
+
+It **keeps the stack up** while it works. The earlier version of this script
+ran `docker compose down` → `git pull` → `rsync --delete` → `up -d`, which
+took every service offline for the whole backup window and applied whatever
+happened to be on `main` at 04:00.
+
+Image updates are **opt-in**. Set `AUTO_UPDATE=true` to let it pull images and
+recreate only the containers that changed — and it refuses to pull images with
+a floating tag unless you also set `ALLOW_FLOATING_TAGS=true`.
+
+Set `BACKUP_SSH_KEY_PATH` in `.env` to the absolute path on the host of a
+**dedicated** deploy key for the backup target. Do not point it at your
+personal key: the backup container also holds the Docker socket.
+
+Set `ALERT_WEBHOOK_URL` to get a webhook call when a backup fails.
+
+---
+
+## Security notes
+
+- **Port 445 is published on all interfaces.** Samba is LAN-only by
+  intention; make sure the router does not forward it.
+- **Do not port-forward the whole stack.** Use Tailscale or WireGuard for
+  remote access instead of exposing Caddy to the open internet. If you do
+  expose Caddy, put Authentik in front (which the config already does).
+- **Portainer and the Docker socket.** Portainer mounts
+  `/var/run/docker.sock`, which is root-equivalent access to the host.
+  Protect it with a strong password and keep it behind Authentik.
+- **`collabora-code` runs with `cap_add: dSYS_ADMIN`.** That is a
+  broad capability; scope the service if you enable it.
+- **The backup container holds the Docker socket**, so treat its deploy key as
+  a host-compromising credential. Use a dedicated key with a narrow scope.
+
+---
+
+## Known issues
+
+Found while auditing this repository. Items under **Fixed** were addressed by
+the open pull requests; the rest are still outstanding.
+
+### Fixed
+
+- **`open-webui` would not start.** `services/openwebui.yml` pointed `env_file`
+  at `../config/owu.env`, a file the repository never shipped. The main `.env`
+  is now required and `config/owu.env` is optional. *#3*
+- **NVENC never engaged.** `services/jellyfin.yml` did not set
+  `NVIDIA_DRIVER_CAPABILITIES`, and the toolkit defaults to `utility,compute`,
+  so Jellyfin silently transcoded on the CPU. *#3*
+- **`gitlab.yml` was unpinned, on EE, and carried the whole monitoring stack.**
+  Now `gitlab/gitlab-ce:19.5.3-ce.0` with Prometheus, Grafana, Alertmanager
+  and the exporters off. *#3*
+- **`gitlab.yml` advertised `172.11.0.5`** for memberlist and Prometheus but
+  never assigned that address, so GitLab advertised an IP it did not own. *#3*
+- **The nightly backup daemon took the whole stack down**, pulled unpinned
+  `main` and `:latest` images, and could not even build — `apk add
+  docker-compose` does not exist in Alpine 3.22+. Rebuilt to keep the stack
+  up, dump databases properly, and make image updates opt-in and tag-safe. *#3*
+- **Three unsafe Caddy routes.** `admin1.` was a leftover debug route,
+  `smb.` could never work (Caddy does not speak SMB), and `ai.photos.`
+  published the unauthenticated Immich ML API to the internet. All three are
+  now commented out with an explanation. *#3*
+- **Two credentials were committed in plaintext** — the Samba password and the
+  Automatic1111 Gradio password. Both now come from `.env`. *#1* — but the old
+  values are still in the git history and **must be rotated**.
+
+### Still open
+
+1. **`desec-caddy-sync` exits at startup by design.** It syncs Caddy's DNS
+   records to deSEC.io and has `restart: no`, so it fails once and stays down
+   unless deSEC credentials are present. If you are not hosting DNS at
+   deSEC.io that is expected; if you are, add its API token to `.env` (the
+   deSEC tooling reads `DESEC_TOKEN`).
+2. **`scripts/prune.sh` stops every container** — including itself — via
+   `docker stop $(docker ps -q)`.
+3. **`scripts/restart.sh` runs compose under `sudo`**, which leaves root-owned
+   files in the repository.
+4. **`generateKeys.sh` appends rather than replacing.** Running it twice
+   duplicates keys.
+5. **`images/stable-diffusion/` is never built.** The compose service uses the
+   published `jcsdev/automatic1111` image and has no `build:` key, so that
+   Dockerfile is dead code.
+6. **`services/.stable-diffusion.yml.swp`** (a nano swap file) was committed;
+   it has been removed in the security fix branch.
+
+### Worth knowing, not broken
+
+- The `edit.` Caddy route points at `collabora-code`, which is disabled by
+  default, so that route returns a 502 until you enable the service.
+- `header_up X-Real-IP 1.2.3.4` in the `dns.` block is a leftover placeholder.
+  Every DNS client is reported with that address.
+
+---
+
+## Repository layout
+
+```
+docker-compose.yml            root stack, pulls in services/*.yml via `include:`
+docker-compose.backup.yml     the backup daemon
+.env.example                  annotated environment template
+config/
+  owu.env.example             optional per-service overrides for open-webui
+services/
+  caddy/Caddyfile             routing, TLS, Authentik forward-auth
+  caddy/caddy.yml             Caddy + desec-caddy-sync
+  <service>.yml               one file per service
+  unused/                     services kept but not enabled
+images/
+  backup/                     the backup daemon image
+  stable-diffusion/           optional custom Automatic1111 image (not built)
+scripts/
+  generateKeys.sh             random secrets for Authentik and Umami
+  cronSetup.sh                docker prune cron job
+  prune.sh / restart.sh       maintenance helpers
+docs/
+  HOST-SETUP.md               host OS preparation — read this first
+```
+
+`include:` requires **Docker Compose v2.20.3 or newer**. Each included file is
+loaded with its own project directory, so relative paths inside a service file
+resolve relative to `services/`.
+
+---
+
+## License
+
+Private repository — no license granted. All rights reserved.
