@@ -7,14 +7,31 @@ services:
       dockerfile: ./backup.dockerfile
 
     environment:
-      - REMOTE_USER=user
-      - REMOTE_HOST=backup.${ROOT_DOMAIN}
-      - REMOTE_DEST_DIR=/mnt/16tb/backup
+      - REMOTE_USER=${REMOTE_USER:-backup}
+      - REMOTE_HOST=${REMOTE_HOST:?REMOTE_HOST must be set in .env}
+      - REMOTE_DEST_DIR=${REMOTE_DEST_DIR:-/mnt/16tb/backup}
+      # A DEDICATED deploy key for the backup target. Do not point this at
+      # your personal key: this container also holds the Docker socket.
+      - SSH_KEY_PATH=/root/.ssh/id_ed25519
+      # "true" pulls images and recreates only the containers that changed.
+      # Off by default, and it refuses to pull images with a floating tag
+      # unless ALLOW_FLOATING_TAGS is also true.
+      - AUTO_UPDATE=${AUTO_UPDATE:-false}
+      - ALLOW_FLOATING_TAGS=${ALLOW_FLOATING_TAGS:-false}
+      # How many days of local database dumps to keep.
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
+      # Optional webhook, called with {"text": "..."} when a backup fails.
+      - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL:-}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/app
       - ${DATA_DIR}:/data:ro
-      - ~/.ssh:/root/.ssh:ro
+      # Absolute path on the HOST to the dedicated deploy key.
+      - ${BACKUP_SSH_KEY_PATH:?BACKUP_SSH_KEY_PATH must point at a dedicated deploy key for the backup target}:/root/.ssh/id_ed25519:ro
 
-    env_file: .env
+    env_file:
+      - path: .env
+        required: true

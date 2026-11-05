@@ -2,13 +2,23 @@ services:
   jellyfin:
     image: jellyfin/jellyfin
     container_name: jellyfin
-    runtime: nvidia # Use the NVIDIA container runtime
     environment:
       - NVIDIA_VISIBLE_DEVICES=all # Expose all NVIDIA GPUs
+      # 'video' is what enables NVENC. The NVIDIA toolkit defaults to
+      # utility,compute, which leaves Jellyfin transcoding on the CPU with
+      # no warning in the logs.
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
       - PUID=1000
       - PGID=1000
       - TZ=America/Denver
       - JELLYFIN_PublishedServerUrl=https://stream.${ROOT_DOMAIN}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     restart: always
     volumes:
         - ${DATA_DIR}jellyfin/config:/config
